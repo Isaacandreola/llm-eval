@@ -1,0 +1,17 @@
+{
+  "name": "llm-eval",
+  "version": "1.0.0",
+  "description": "Um mini eval harness para saídas de LLM: mede accuracy, recall por classe e confusão — e falha o CI quando a qualidade cai.",
+  "type": "module",
+  "module": "src/index.ts",
+  "scripts": {
+    "eval": "bun run src/index.ts",
+    "test": "bun test",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/bun": "latest",
+    "typescript": "^5.5.0"
+  },
+  "license": "MIT"
+}

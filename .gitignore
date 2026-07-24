@@ -1,0 +1,7 @@
+node_modules/
+.env
+.env.local
+*.log
+
+# config local de ferramentas
+.claude/
