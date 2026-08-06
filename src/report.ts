@@ -26,12 +26,21 @@ export function formatReport(r: Report): string {
   lines.push(c.bold(`Avaliação — ${r.classifier}`));
   lines.push(rule);
   lines.push(`Accuracy geral: ${c.bold(pct(r.accuracy))}  (${r.correct}/${r.total})  ${bar(r.accuracy)}`);
+  lines.push(`Macro-F1:       ${c.bold(pct(r.macroF1))}  ${c.dim("(cada classe pesa igual)")}  ${bar(r.macroF1)}`);
   lines.push("");
-  lines.push("Recall por classe:");
+  lines.push(`  ${"classe".padEnd(10)} ${"prec".padStart(6)} ${"recall".padStart(7)} ${"F1".padStart(7)}   ${c.dim("acertos / casos")}`);
   for (const intent of INTENTS) {
     const m = r.perClass[intent];
-    const color = m.recall === 1 ? c.green : m.recall >= 0.5 ? (s: string) => s : c.red;
-    lines.push(`  ${intent.padEnd(10)} ${color(pct(m.recall).padStart(6))}  ${bar(m.recall)}  ${c.dim(`${m.correct}/${m.total}`)}`);
+    const color = m.f1 === 1 ? c.green : m.f1 >= 0.5 ? (s: string) => s : c.red;
+    lines.push(
+      `  ${intent.padEnd(10)} ${pct(m.precision).padStart(6)} ${pct(m.recall).padStart(7)} ` +
+        `${color(pct(m.f1).padStart(7))}   ${c.dim(`${m.correct}/${m.total}`)}` +
+        // Prever muito mais que o real e' o sintoma da classe "imã": ela rouba
+        // casos das outras. Recall sozinho esconde isso, precision denuncia.
+        (m.predicted > m.total * 2 && m.total > 0
+          ? c.dim(`  ← previu ${m.predicted}×, existem ${m.total}`)
+          : ""),
+    );
   }
 
   if (Object.keys(r.confusion).length) {

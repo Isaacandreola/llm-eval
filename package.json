@@ -1,7 +1,7 @@
 {
   "name": "llm-eval",
   "version": "1.0.0",
-  "description": "Um mini eval harness para saídas de LLM: mede accuracy, recall por classe e confusão — e falha o CI quando a qualidade cai.",
+  "description": "Um mini eval harness para saídas de LLM: mede accuracy, precision/recall/F1 por classe e macro-F1 — e falha o CI quando a qualidade cai.",
   "type": "module",
   "module": "src/index.ts",
   "scripts": {

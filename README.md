@@ -4,20 +4,22 @@
 
 "Como você sabe que seu sistema de IA funciona?" é a pergunta que separa quem faz demo de quem
 faz produção. Este projeto é uma resposta: um harness que roda um classificador de LLM contra um
-conjunto rotulado, mede **accuracy, recall por classe e matriz de confusão**, e — o ponto —
-**sai com erro se a qualidade cair abaixo de um limiar**, do mesmo jeito que um teste. É assim
-que avaliação de IA entra num pipeline de CI e barra uma regressão antes de ir para produção.
+conjunto rotulado, mede **accuracy, precision/recall/F1 por classe, macro-F1 e matriz de
+confusão**, e — o ponto — **sai com erro se a qualidade cair abaixo de um limiar**, do mesmo jeito
+que um teste. É assim que avaliação de IA entra num pipeline de CI e barra uma regressão antes de
+ir para produção.
 
 ```
 Avaliação — keyword (heurístico)
 ────────────────────────────────────────────────────
 Accuracy geral: 78.6%  (11/14)  ████████████████░░░░
+Macro-F1:       78.6%  (cada classe pesa igual)  ████████████████░░░░
 
-Recall por classe:
-  compra      75.0%  ███████████████░░░░░  3/4
-  suporte     75.0%  ███████████████░░░░░  3/4
-  parceria    75.0%  ███████████████░░░░░  3/4
-  outro      100.0%  ████████████████████  2/2
+  classe       prec  recall      F1   acertos / casos
+  compra     100.0%   75.0%   85.7%   3/4
+  suporte    100.0%   75.0%   85.7%   3/4
+  parceria   100.0%   75.0%   85.7%   3/4
+  outro       40.0%  100.0%   57.1%   2/2  ← previu 5×, existem 2
 
 Casos que falharam (3):
   ✗ "Vi que subiram o valor, não sei se vale continuar."
@@ -40,11 +42,33 @@ harness fazendo seu trabalho: mostrar onde o sistema é frágil, com evidência,
 que o modelo nunca acerta. Por isso o relatório traz **recall por classe** e a **matriz de
 confusão** — o recorte que revela o problema que a média esconde.
 
+**E recall sozinho também engana.** Um classificador que responde `suporte` para tudo tem recall
+**100%** em suporte — e é inútil. Por isso entrou **precision**: das vezes que ele previu esta
+classe, quantas estavam certas. O **F1** é a média harmônica das duas, escolhida porque a
+harmônica pune o desequilíbrio e a aritmética não: 100% de recall com 33% de precision dá F1 de
+50%, não de 66%.
+
+**Isso achou um problema aqui mesmo, na primeira execução.** Repare no `outro` da saída acima:
+recall 100%, precision **40%**, previsto **5 vezes quando só existem 2 casos**. É a *classe-imã* —
+o balde de fallback que absorve o que as outras três não pegaram. Com o relatório antigo, só de
+recall, ela era a única classe com nota perfeita. Era a pior.
+
 ---
 
 ## Uso como gate de CI
 
-O harness sai com **código 1** quando a accuracy fica abaixo de `EVAL_THRESHOLD` (padrão 70%).
+O harness sai com **código 1** quando qualquer um dos dois limiares reprova:
+
+| Variável | Padrão | O que protege |
+|---|---|---|
+| `EVAL_THRESHOLD` | 70% | accuracy geral |
+| `EVAL_F1_THRESHOLD` | 60% | **macro-F1** — média do F1 das classes, cada uma pesando igual |
+
+O segundo é o que realmente segura. Num dataset com 80% dos casos em `suporte`, um classificador
+que **nunca** acerta `parceria` ainda passa no limiar de accuracy — 80% é maior que 70%. No
+macro-F1 a classe morta puxa a média para baixo e o build quebra. Esse caso exato é um
+[teste](tests/evaluator.test.ts), não uma afirmação de README.
+
 No [workflow de CI](.github/workflows/ci.yml), isso vira um portão: um prompt ou modelo que
 regrida a qualidade **quebra o build**, igual a um teste unitário que falha.
 
